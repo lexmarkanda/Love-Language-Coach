@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { ScenarioId, ScenarioData } from './types';
-import { SCENARIOS } from './constants';
-import ScenarioCard from './components/ScenarioCard';
-import CheatSheet from './components/CheatSheet';
-import ChatInterface from './components/ChatInterface';
+import { ScenarioId, ScenarioData } from '@/types';
+import { SCENARIOS } from '@/constants';
+import ScenarioCard from '@/components/ScenarioCard';
+import CheatSheet from '@/components/CheatSheet';
+import ChatInterface from '@/components/ChatInterface';
 
 type View = 'MENU' | 'LEARN' | 'PRACTICE';
 

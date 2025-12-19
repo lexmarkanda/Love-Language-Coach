@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ScenarioData, ChatMessage } from '../types';
-import { generateReplyAndFeedback } from '../services/geminiService';
+import { ScenarioData, ChatMessage } from '@/types';
+import { generateReplyAndFeedback } from '@/services/geminiService';
 
 interface ChatInterfaceProps {
   scenario: ScenarioData;
