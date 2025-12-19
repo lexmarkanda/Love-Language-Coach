@@ -15,10 +15,7 @@ export default defineConfig({
       '@': path.resolve(__dirname, './')
     }
   },
-  define: {
-    // Expose process.env.API_KEY to the browser context
-    'process.env.API_KEY': JSON.stringify(process.env.API_KEY)
-  },
+  // API_KEY 現在只存在於伺服器端，不再需要 define 到前端
   build: {
     outDir: 'dist',
     sourcemap: false
