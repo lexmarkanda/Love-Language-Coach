@@ -1,26 +1,41 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenerativeAI, GenerativeModel, Part, Content } from '@google/generative-ai'; // <-- 修改這裡！
 import { ScenarioData, AIResponseSchema } from '../types';
+
+// 從環境變數獲取 API Key
+const API_KEY = process.env.API_KEY || '';
+if (!API_KEY) {
+  console.error("API_KEY is not set in environment variables!");
+  // 可以在這裡拋出錯誤或提供一個默認的錯誤響應
+}
+
+// 初始化 Gemini AI 客戶端
+// 這裡使用 GoogleGenerativeAI 類，而不是 GoogleGenAI
+const genAI = new GoogleGenerativeAI(API_KEY);
+
+// 選擇模型 (使用最新的穩定版本，例如 gemini-1.5-flash 或 gemini-pro-flash)
+// 注意：gemini-3-flash-preview 已經過時或可能無效
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // <-- 修改這裡！
 
 export const generateReplyAndFeedback = async (
   scenario: ScenarioData,
   history: { role: 'user' | 'model', content: string }[],
   userMessage: string
 ): Promise<AIResponseSchema> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  
+
+  // 定義回應的 JSON Schema
   const RESPONSE_SCHEMA = {
-    type: Type.OBJECT,
+    type: "object", // 注意：Type.OBJECT 是舊 SDK 的寫法，現在直接用字符串 "object"
     properties: {
       girlfriendReply: {
-        type: Type.STRING,
+        type: "string",
         description: "女友身分的自然回覆內容",
       },
       coachFeedback: {
-        type: Type.OBJECT,
+        type: "object",
         properties: {
-          score: { type: Type.INTEGER, description: "1-5 分的評分" },
-          comment: { type: Type.STRING, description: "對用戶回覆的簡短評論" },
-          suggestion: { type: Type.STRING, description: "更好的浪漫表達建議" },
+          score: { type: "integer", description: "1-5 分的評分" },
+          comment: { type: "string", description: "對用戶回覆的簡短評論" },
+          suggestion: { type: "string", description: "更好的浪漫表達建議" },
         },
         required: ["score", "comment", "suggestion"],
       },
@@ -37,30 +52,34 @@ export const generateReplyAndFeedback = async (
     
     目前的初始情境：${scenario.introMessage}
     情境重點：${scenario.description}
+    確保回應嚴格遵守提供的 JSON 格式。
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: [
-        ...history.map(msg => ({
-          role: msg.role,
-          parts: [{ text: msg.content }]
-        })),
-        {
-          role: "user",
-          parts: [{ text: userMessage }]
-        }
-      ],
-      config: {
-        systemInstruction,
+    // 將歷史消息轉換為 Gemini API 要求的格式
+    const contents: Content[] = history.map(msg => ({
+      role: msg.role === 'user' ? 'user' : 'model', // 確保角色名稱正確
+      parts: [{ text: msg.content }]
+    }));
+
+    // 添加當前用戶消息
+    contents.push({
+      role: "user",
+      parts: [{ text: userMessage }]
+    });
+
+    const result = await model.generateContent({ // 使用上面定義的 model 實例
+      contents: contents,
+      systemInstruction: { parts: [{ text: systemInstruction }] }, // System Instruction 現在這樣寫
+      generationConfig: {
         responseMimeType: "application/json",
-        responseSchema: RESPONSE_SCHEMA,
+        responseSchema: RESPONSE_SCHEMA, // 直接傳遞 JSON Schema 對象
       }
     });
 
-    const text = response.text;
+    const text = result.response.text(); // 獲取回應文本
     return JSON.parse(text || '{}') as AIResponseSchema;
+
   } catch (error) {
     console.error("Gemini API Error:", error);
     return {
