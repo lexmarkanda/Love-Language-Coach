@@ -12,17 +12,15 @@ export default async function handler(req: Request) {
 
   try {
     const body = await req.json();
-    const { scenario, history, userMessage } = body;
+    const { scenario, persona, history, userMessage, playerGender, vibeScore } = body;
     
     const apiKey = process.env.API_KEY;
     if (!apiKey) {
-      return new Response(JSON.stringify({ 
-        error: "Configuration Error", 
-        message: "伺服器環境設定不完整 (Missing API_KEY)。" 
-      }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ error: "Missing API_KEY" }), { status: 500 });
     }
 
     const ai = new GoogleGenAI({ apiKey });
+    const partnerRole = playerGender === 'male' ? '女友' : '男友';
     
     const RESPONSE_SCHEMA = {
       type: Type.OBJECT,
@@ -42,14 +40,15 @@ export default async function handler(req: Request) {
     };
 
     const systemInstruction = `
-      你是一位專門研究「情緒價值」的感情教練，正在指導用戶在「${scenario.title}」情境下的對話。
+      你是 RPG 戀愛模擬器中的「${partnerRole}」。人格：${persona.name}(${persona.trait})。
       
-      【角色設定】
-      1. 女友：正與用戶互動。如果用戶敷衍、字數過短或內容無意義，請展現真實反應（如失望、困惑、嬌嗔要求認真回答）。
-      2. 導師：理性的評論者。敷衍的回答應給予 1-2 分，並提供具體的改進建議。
+      【重要行為准則】
+      - 你必須通人性、懂得感恩。當玩家主動提供幫助、買東西、給予體貼建議時，你應該感到溫暖並軟化態度。
+      - 禁止將主動幫助誤判為命令。
+      - 只要玩家有誠意、具體關心，請給予 4-5 分。
+      - 分析報告要指出玩家「好意」的閃光點。
     `;
 
-    // 使用極致輕量模型 gemini-flash-lite-latest
     const result = await ai.models.generateContent({
       model: "gemini-flash-lite-latest",
       contents: [
@@ -69,35 +68,11 @@ export default async function handler(req: Request) {
       }
     });
 
-    const outputText = result.text;
-    if (!outputText) throw new Error("AI 未回傳任何內容");
-
-    return new Response(outputText, {
+    return new Response(result.text, {
       headers: { 'Content-Type': 'application/json' },
     });
 
   } catch (error: any) {
-    console.error("Vercel Edge Function Error:", error);
-    
-    let friendlyMessage = error.message || "發生未知錯誤";
-    
-    // 判斷是否為額度錯誤
-    if (friendlyMessage.includes("429") || friendlyMessage.includes("quota") || friendlyMessage.includes("RESOURCE_EXHAUSTED")) {
-      friendlyMessage = "目前練習人數過多（已達 API 免費額度上限），請稍等約 30-60 秒後再次嘗試。";
-    }
-
-    return new Response(JSON.stringify({ 
-      error: "Proxy Failure", 
-      message: friendlyMessage,
-      girlfriendReply: "（收訊中斷中...）",
-      coachFeedback: {
-        score: 0,
-        comment: friendlyMessage,
-        suggestion: "這通常是短時間內請求太頻繁導致的，休息一下再回來吧！"
-      }
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
 }

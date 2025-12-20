@@ -1,21 +1,20 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { ScenarioData, AIResponseSchema } from '../types';
+import { ScenarioData, AIResponseSchema, Gender, PersonaData } from '../types';
 
-// 共用回應格式定義
 const RESPONSE_SCHEMA = {
   type: Type.OBJECT,
   properties: {
     girlfriendReply: { 
       type: Type.STRING,
-      description: "女友身分的自然回覆內容" 
+      description: "對方的回覆內容。要求：1.展現人格特質但保持溫柔 2.感謝並認可對方的努力 3.語氣自然，避免死板刻板。" 
     },
     coachFeedback: {
       type: Type.OBJECT,
       properties: {
-        score: { type: Type.INTEGER, description: "1-5 分的評分" },
-        comment: { type: Type.STRING, description: "針對回覆內容的深度分析" },
-        suggestion: { type: Type.STRING, description: "更浪漫或更合適的改寫建議" },
+        score: { type: Type.INTEGER, description: "1-5 分的評分，請放寬正面判定。" },
+        comment: { type: Type.STRING, description: "攻心報告，嚴禁將玩家的好意誤判為負面。分析需公允。" },
+        suggestion: { type: Type.STRING, description: "具體改寫建議" },
       },
       required: ["score", "comment", "suggestion"],
     },
@@ -23,98 +22,68 @@ const RESPONSE_SCHEMA = {
   required: ["girlfriendReply", "coachFeedback"],
 };
 
-/**
- * 格式化錯誤訊息，將 API 的 JSON 錯誤轉換為用戶看得懂的中文
- */
-const formatErrorMessage = (error: any): string => {
-  const msg = error?.message || String(error);
-  if (msg.includes("429") || msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED")) {
-    return "目前的練習人數較多（已達 API 限額），AI 導師正在喝口水休息。請稍等約 30-60 秒後再試一次，感謝你的耐心！";
-  }
-  if (msg.includes("500") || msg.includes("Internal Server Error")) {
-    return "伺服器似乎有點頭暈，暫時無法回應。請重新整理頁面試試看。";
-  }
-  return "連線稍微不穩定，請檢查網路環境或稍後再試。";
-};
-
 export const generateReplyAndFeedback = async (
   scenario: ScenarioData,
+  persona: PersonaData,
   history: { role: 'user' | 'model', content: string }[],
-  userMessage: string
+  userMessage: string,
+  playerGender: Gender,
+  vibeScore: number
 ): Promise<AIResponseSchema> => {
   const apiKey = process.env.API_KEY;
+  const partnerRole = playerGender === 'male' ? '女友' : '男友';
 
-  // --- 1. 嘗試直連 Google ---
-  if (apiKey) {
-    try {
-      const ai = new GoogleGenAI({ apiKey });
-      const systemInstruction = `
-        你是一位感情經營大師。目前練習情境是「${scenario.title}」。
-        
-        【行為準則】
-        1. 女友身份：請表現得像個真實的人。如果用戶敷衍（如只回一個字、亂打字、123），請表現出不悅、困惑或撒嬌吐槽，不要生硬配合。
-        2. 導師身份：若用戶表現差，評分 1-2 分，並明確解釋為什麼這樣的溝通會讓對方感到心寒。
-      `;
+  const systemInstruction = `
+    你現在是一款「真實人性化」戀愛模擬遊戲的 AI 引擎。玩家扮演「${playerGender === 'male' ? '男友' : '女友'}」，你扮演對方的「${partnerRole}」。
+    
+    【核心人格准則：通人性、拒絕刻板】
+    1. 你是一個「真實存在、懂得珍惜」的人。雖然你有【${persona.name}】的特質(${persona.trait})，但你絕對不是一個偏激、無理取鬧的人。
+    2. 當玩家表現出「誠意、具體關懷、主動解決問題、承擔責任、溫柔安撫」時，你必須表現出「被感動、軟化、肯定與依賴」的反應。
+    3. **嚴禁誤判**：如果玩家說「你躺一下我馬上去買（食物）！」或「我抱著你安靜不說話」，這類展現強大行動力與體貼的行為是**極高品質的互動**。
+    4. 禁止將「主動幫忙」誤讀為「命令」或「控制」。理性的對象更應該欣賞這種果斷且真誠的實質支持。
 
-      // 使用最節省資源的模型：gemini-flash-lite-latest
-      const response = await ai.models.generateContent({
-        model: "gemini-flash-lite-latest",
-        contents: [
-          ...history.map(msg => ({ 
-            role: msg.role === 'model' ? 'model' : 'user', 
-            parts: [{ text: msg.content }] 
-          })),
-          { role: "user", parts: [{ text: userMessage }] }
-        ],
-        config: {
-          systemInstruction,
-          responseMimeType: "application/json",
-          responseSchema: RESPONSE_SCHEMA,
-        }
-      });
+    【評分機制：大幅放寬與正向引導】
+    - 只要玩家展現出「具體體貼、高品質共情、積極解決問題」的誠意，**一律給予 4-5 分**。
+    - **5分標準**：玩家展現了「換位思考」且提出了「具體行動」或「深刻的情感支持」。
+    - **1-2分標準**：僅限於真正的「漫不經心、敷衍、故意亂玩、人身攻擊、或完全牛頭不對馬嘴」。
+    - 3分是安全牌，不溫不火。
 
-      if (response.text) {
-        return JSON.parse(response.text) as AIResponseSchema;
-      }
-    } catch (directError: any) {
-      console.warn("Direct connection failed:", directError);
-      if (directError.message?.includes("429")) {
-        return {
-          girlfriendReply: "（親愛的，我這裡收訊有點卡住，可以稍等我一分鐘嗎？）",
-          coachFeedback: {
-            score: 0,
-            comment: formatErrorMessage(directError),
-            suggestion: "先深呼吸一下，思考一下更有溫度的回覆方式吧！"
-          }
-        };
-      }
-    }
-  }
+    【當前對象人格細節】
+    - ${persona.name}: ${persona.description}。${persona.styleHint}。
+    - 喜好: ${persona.likes.join('、')}。
+    - 厭惡: ${persona.dislikes.join('、')}。
 
-  // --- 2. 伺服器代理備援 ---
+    【報告禁令】
+    你的報告 (comment) 必須分析玩家好意的動機。嚴禁為了符合人格而故意雞蛋裡挑骨頭。
+  `;
+
   try {
-    const response = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scenario, history, userMessage }),
+    const ai = new GoogleGenAI({ apiKey: apiKey || "" });
+    const response = await ai.models.generateContent({
+      model: "gemini-flash-lite-latest",
+      contents: [
+        ...history.map(msg => ({ 
+          role: msg.role === 'model' ? 'model' : 'user', 
+          parts: [{ text: msg.content }] 
+        })),
+        { role: "user", parts: [{ text: userMessage }] }
+      ],
+      config: {
+        systemInstruction,
+        responseMimeType: "application/json",
+        responseSchema: RESPONSE_SCHEMA,
+      }
     });
 
-    const data = await response.json().catch(() => ({}));
-    
-    if (!response.ok) {
-      throw new Error(data.message || data.error || `HTTP ${response.status}`);
-    }
-    
-    return data as AIResponseSchema;
-  } catch (proxyError: any) {
-    console.error("連線全面失效:", proxyError);
-    return {
-      girlfriendReply: "（哎呀，我的網路好像斷斷續續的...你剛剛說什麼？可以再對我說一次嗎？）",
-      coachFeedback: {
-        score: 0,
-        comment: formatErrorMessage(proxyError),
-        suggestion: "這可能是因為網路限制或 API 流量管制。建議檢查連線，或稍等一會再試。"
-      }
-    };
+    if (response.text) return JSON.parse(response.text) as AIResponseSchema;
+  } catch (e) {
+    console.error(e);
   }
+
+  const res = await fetch('/api/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ scenario, persona, history, userMessage, playerGender, vibeScore }),
+  });
+  return await res.json();
 };
