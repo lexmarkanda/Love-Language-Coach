@@ -1,8 +1,8 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { ScenarioData, AIResponseSchema } from './types';
+import { ScenarioData, AIResponseSchema } from '../types';
 
-// Shared Response Schema
+// 共用回應格式定義
 const RESPONSE_SCHEMA = {
   type: Type.OBJECT,
   properties: {
@@ -24,31 +24,28 @@ const RESPONSE_SCHEMA = {
 };
 
 /**
- * Smart Routing: 
- * 1. Try Direct Call (Google API) - Best for Taiwan/Global users.
- * 2. Fallback to Proxy (/api/generate) - Essential for HK/Mainland users.
+ * 智慧連線路由：
+ * 1. 優先嘗試 Direct Call (適用於台灣等無限制地區)
+ * 2. 失敗則自動切換至 Proxy (支援香港等受限地區)
  */
 export const generateReplyAndFeedback = async (
   scenario: ScenarioData,
   history: { role: 'user' | 'model', content: string }[],
   userMessage: string
 ): Promise<AIResponseSchema> => {
-  // Use process.env.API_KEY as requested. 
-  // Note: In some environments, this might be injected into window.process.env or handled by the bundler.
-  const apiKey = (window as any).process?.env?.API_KEY || (import.meta as any).env?.VITE_API_KEY;
+  // 取得環境變數中的 API Key
+  const apiKey = process.env.API_KEY;
 
-  // --- Path 1: Direct Call (Fastest for Taiwan) ---
+  // --- 第一步：嘗試直連 Google ---
   if (apiKey) {
     try {
       const ai = new GoogleGenAI({ apiKey });
       const systemInstruction = `
-        你是一位頂尖的感情經營大師。目標是引導用戶練習高品質的親密溝通。
+        你是一位頂尖的感情經營大師。目前練習情境是「${scenario.title}」。
         
-        【目前情境】: ${scenario.title} - ${scenario.description}
-        
-        【互動行為準則】
-        1. 女友身份：請根據情境做出反應。如果用戶的回覆「文不對題」、「極度敷衍（如：喔、嗯、123）」或「態度隨便」，請不要生硬配合，而是表現出真實的情緒反應（例如：感到被冷落、撒嬌吐槽或困惑）。
-        2. 導師身份：嚴格評分。若用戶敷衍或亂回，給予 1-2 分，並解釋為什麼這樣的互動對感情有害。
+        【行為準則】
+        1. 女友身份：請表現得像個真實的人。如果用戶敷衍（如只回一個字、亂打字、123），請表現出不悅、困惑或撒嬌吐槽，不要生硬配合。
+        2. 導師身份：若用戶表現差，評分 1-2 分，並明確解釋為什麼這樣的溝通會讓對方感到心寒。
       `;
 
       const response = await ai.models.generateContent({
@@ -71,11 +68,11 @@ export const generateReplyAndFeedback = async (
         return JSON.parse(response.text) as AIResponseSchema;
       }
     } catch (directError) {
-      console.warn("Direct path failed (likely network block or API issue), falling back to proxy...", directError);
+      console.warn("直連 Google API 失敗，正在嘗試切換至伺服器代理...", directError);
     }
   }
 
-  // --- Path 2: Proxy Fallback (Support for HK/Vercel) ---
+  // --- 第二步：伺服器代理備援 ---
   try {
     const response = await fetch('/api/generate', {
       method: 'POST',
@@ -84,21 +81,19 @@ export const generateReplyAndFeedback = async (
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Proxy request failed');
+      const errorJson = await response.json().catch(() => ({}));
+      throw new Error(errorJson.message || `Proxy error: ${response.status}`);
     }
     
     return await response.json() as AIResponseSchema;
-  } catch (proxyError) {
-    console.error("Critical: Both connection paths failed.", proxyError);
-    
-    // Final UI Fallback: Return a realistic "connection issue" message in character
+  } catch (proxyError: any) {
+    console.error("連線全面失效:", proxyError);
     return {
-      girlfriendReply: "親愛的，我這邊訊號好像突然斷斷續續的...你剛剛說的話我沒聽清楚，可以再說一次嗎？",
+      girlfriendReply: "（親愛的，我這裡收訊突然變得很差...剛才你說什麼？可以再對我說一次嗎？）",
       coachFeedback: {
         score: 0,
-        comment: "連線異常：無法接觸到 AI 導師伺服器。",
-        suggestion: "這可能是因為您所在的地區網路受到限制（如香港）。請檢查 VPN 設定，或稍後再試一次。"
+        comment: `連線異常：${proxyError.message || '無法接觸伺服器'}`,
+        suggestion: "這可能是因為地區網路限制或伺服器負載，請試著刷新頁面或稍候重試。"
       }
     };
   }
