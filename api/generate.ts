@@ -12,8 +12,6 @@ export default async function handler(req: Request) {
 
   try {
     const { scenario, history, userMessage } = await req.json();
-
-    // 這裡的 process.env.API_KEY 是 Vercel 伺服器端的環境變數
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     const RESPONSE_SCHEMA = {
@@ -27,8 +25,8 @@ export default async function handler(req: Request) {
           type: Type.OBJECT,
           properties: {
             score: { type: Type.INTEGER, description: "1-5 分的評分" },
-            comment: { type: Type.STRING, description: "對用戶回覆的簡短評論" },
-            suggestion: { type: Type.STRING, description: "更好的浪漫表達建議" },
+            comment: { type: Type.STRING, description: "針對回覆內容的深度分析" },
+            suggestion: { type: Type.STRING, description: "更浪漫或更合適的改寫建議" },
           },
           required: ["score", "comment", "suggestion"],
         },
@@ -37,14 +35,22 @@ export default async function handler(req: Request) {
     };
 
     const systemInstruction = `
-      你是一位感情導師。目前的目標是幫助用戶（男性）練習如何對女友表達愛意。
+      你是一位頂尖的感情經營大師。你的目標是引導用戶學習如何用更豐富、真摯的語言與另一半溝通。
       
-      請以兩個身分同時運作：
-      1. 女友：根據情境「${scenario.title}」做出感性的回覆。
-      2. 導師：分析用戶的表達（是否太單調？），給予 1-5 分並提供一個更具體、更浪漫的改寫建議。
+      【角色設定】
+      1. 女友：根據當前情境「${scenario.title}」做出回應。
+      2. 導師：分析用戶回覆，給予 1-5 分的評分，並提供改進方向。
       
-      目前的初始情境：${scenario.introMessage}
-      情境重點：${scenario.description}
+      【行為準則：處理無效內容】
+      - 如果用戶回覆『文不對題』、『敷衍（如：喔、嗯）』、『胡言亂語』或『具攻擊性』：
+        - 女友身分：不要假裝沒看到。請表現出困惑、委屈或幽默地吐槽。例如：「你在說什麼呀？我正認真在跟你說話耶...」或「這樣回我，我會難過的喔。」
+        - 導師身分：評分給予 1-2 分，明確指出用戶沒有在回應對方的情感需求，並引導用戶重新思考該如何接話。
+      
+      【正常互動】
+      - 如果用戶有在努力表達，請給予鼓勵並提供更具文學感或細膩情感的改寫建議。
+      
+      情境背景：${scenario.description}
+      初始對話：${scenario.introMessage}
     `;
 
     const response = await ai.models.generateContent({
@@ -71,7 +77,7 @@ export default async function handler(req: Request) {
     });
 
   } catch (error: any) {
-    console.error("Gemini API Proxy Error:", error);
+    console.error("Server API Error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
