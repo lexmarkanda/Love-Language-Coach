@@ -2,17 +2,20 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { ScenarioData, AIResponseSchema } from '@/types';
 
-// 定義 Schema 供前端 Direct Call 使用
+// 共用的 Response Schema 定義
 const RESPONSE_SCHEMA = {
   type: Type.OBJECT,
   properties: {
-    girlfriendReply: { type: Type.STRING },
+    girlfriendReply: { 
+      type: Type.STRING,
+      description: "女友身分的自然回覆" 
+    },
     coachFeedback: {
       type: Type.OBJECT,
       properties: {
-        score: { type: Type.INTEGER },
-        comment: { type: Type.STRING },
-        suggestion: { type: Type.STRING },
+        score: { type: Type.INTEGER, description: "1-5 分" },
+        comment: { type: Type.STRING, description: "對溝通質量的點評" },
+        suggestion: { type: Type.STRING, description: "更優質的建議" },
       },
       required: ["score", "comment", "suggestion"],
     },
@@ -25,19 +28,18 @@ export const generateReplyAndFeedback = async (
   history: { role: 'user' | 'model', content: string }[],
   userMessage: string
 ): Promise<AIResponseSchema> => {
-  const apiKey = (import.meta as any).env.VITE_API_KEY;
+  const apiKey = process.env.API_KEY;
 
-  // 策略：如果是台灣或其他可直連區域，且有 API_KEY，優先嘗試直連以降低延遲
+  // 1. 優先嘗試：直連 Google API (適用於台灣、美國等地區)
   if (apiKey) {
     try {
       const ai = new GoogleGenAI({ apiKey });
       const systemInstruction = `
-        你是一位感情經營大師。幫助用戶練習表達愛意。
-        情境：${scenario.title} (${scenario.description})
+        你是一位感情大師。目前的任務是根據情境「${scenario.title}」協助用戶練習溝通。
         
-        若用戶亂回話（文不對題、敷衍）：
-        - 女友：表現出困惑或撒嬌轉場，要把話題拉回來。
-        - 導師：給予低分並指導用戶該如何關注對方的情緒。
+        【行為準則】
+        - 女友身分：請保持真實感。如果用戶亂回話、敷衍（如：喔、嗯）或文不對題，請表現出困惑、被冷落或撒嬌轉場，不要生硬地接下去。
+        - 導師身分：如果用戶互動質量差，評分給 1-2 分，並解釋為什麼這樣的回答會讓感情降溫。
       `;
 
       const response = await ai.models.generateContent({
@@ -57,12 +59,12 @@ export const generateReplyAndFeedback = async (
         return JSON.parse(response.text) as AIResponseSchema;
       }
     } catch (directError) {
-      console.warn("Direct connection to Google API failed, falling back to proxy...", directError);
-      // 如果直連失敗（可能是被牆或網路問題），則不 return，繼續執行下方的 proxy 邏輯
+      console.warn("Direct connection failed, switching to proxy...", directError);
+      // 直連失敗（常見於香港地區），繼續執行下方的 proxy 邏輯
     }
   }
 
-  // 降級方案：透過 Vercel Serverless Function 中轉 (支援香港等受限地區)
+  // 2. 備援方案：呼叫 Vercel API Proxy (伺服器端中轉)
   try {
     const response = await fetch('/api/generate', {
       method: 'POST',
@@ -70,16 +72,16 @@ export const generateReplyAndFeedback = async (
       body: JSON.stringify({ scenario, history, userMessage }),
     });
 
-    if (!response.ok) throw new Error('Proxy API request failed');
+    if (!response.ok) throw new Error('Proxy endpoint error');
     return await response.json() as AIResponseSchema;
   } catch (proxyError) {
-    console.error("Both direct and proxy attempts failed:", proxyError);
+    console.error("Critical: Both connection paths failed.", proxyError);
     return {
-      girlfriendReply: "親愛的，我現在心跳好快...快到通訊中斷了，可以再跟我說一次嗎？",
+      girlfriendReply: "親愛的，我這邊收訊好像不太好...你剛剛說什麼？可以再說一次嗎？",
       coachFeedback: {
         score: 0,
-        comment: "連線極度不穩定",
-        suggestion: "這可能是網路暫時性的問題，或者是您的回覆內容讓伺服器害羞到斷線了。請再試一次！"
+        comment: "目前與心靈導師的連線不穩定，請檢查網路環境。",
+        suggestion: "請試著縮短回覆或重新啟動應用程式。"
       }
     };
   }
