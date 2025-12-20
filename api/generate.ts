@@ -7,16 +7,18 @@ export const config = {
 
 export default async function handler(req: Request) {
   if (req.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405 });
+    return new Response(JSON.stringify({ error: 'Method Not Allowed' }), { status: 405 });
   }
 
   try {
-    const { scenario, history, userMessage } = await req.json();
+    const body = await req.json();
+    const { scenario, history, userMessage } = body;
     
-    // 伺服器端密鑰
+    // Obtain API key strictly from environment
     const apiKey = process.env.API_KEY;
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: "Missing API_KEY on server" }), { status: 500 });
+      console.error("Backend Error: API_KEY is missing from environment variables.");
+      return new Response(JSON.stringify({ error: "Missing API_KEY on server configuration" }), { status: 500 });
     }
 
     const ai = new GoogleGenAI({ apiKey });
@@ -39,30 +41,27 @@ export default async function handler(req: Request) {
     };
 
     const systemInstruction = `
-      你是一位頂尖的感情經營導師，專門指導男性如何提供情緒價值。
+      你是一位專門研究「情緒價值」的頂尖感情教練。
       
-      【角色設定】
-      1. 女友：正與用戶進行情境對話「${scenario.title}」。個性感性、敏感、需要被理解。
-      2. 導師：理性的評論者，分析用戶的回覆是否達標。
+      【任務描述】
+      引導用戶在對話情境「${scenario.title}」中學習細膩、真誠且具有溫度的溝通。
       
-      【重點：處理低質量互動】
-      如果用戶出現以下行為：
-      - 文不對題：例如你在聊疲累，他回「123」或「吃飽沒」。
-      - 極度敷衍：只回一個字、貼圖文字或「喔」。
-      - 胡言亂語：內容完全沒有邏輯。
-      
-      【回應策略】
-      - 女友：不要假裝沒看到。請展現出困惑或失望。例如：「你在說什麼呀？我正在分享心情耶...」、「寶貝你是不是在忙？回得好隨便喔...」。
-      - 導師：給予 1-2 分。點評應直接指出：「這是不及格的溝通方式，沒有接住對方的球會讓對話走進死胡同。」並提供一個能延續話題且包含情感價值的示範句。
-      
-      情境描述：${scenario.description}
+      【角色互動邏輯】
+      1. 女友身分：請保持對話的連續性。但是，如果用戶輸入的是無意義的內容（如單個字「喔」、「嗯」、隨機字符、或完全不相關的回答），女友應表現出真實的情緒反應：可能是困惑、覺得被冷落、或是調皮地吐槽用戶在敷衍。
+      2. 導師身分：
+         - 高分 (4-5)：展現了共情能力，回應了對方的感受。
+         - 低分 (1-2)：輸入敷衍、牛頭不對馬嘴、或缺乏情緒價值的例行公事回答。
+         - 必須給出具体的「改寫建議」，讓對話更具感染力。
+
+      情境背景：${scenario.description}
     `;
 
-    const response = await ai.models.generateContent({
+    // Use gemini-3-flash-preview for speed and intelligence
+    const result = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: [
         ...history.map((msg: any) => ({
-          role: msg.role,
+          role: msg.role === 'model' ? 'model' : 'user',
           parts: [{ text: msg.content }]
         })),
         {
@@ -77,22 +76,27 @@ export default async function handler(req: Request) {
       }
     });
 
-    if (!response.text) throw new Error("Empty response from AI");
+    const text = result.text;
+    if (!text) {
+      throw new Error("Gemini returned an empty response.");
+    }
 
-    return new Response(response.text, {
+    return new Response(text, {
       headers: { 'Content-Type': 'application/json' },
     });
 
   } catch (error: any) {
-    console.error("API Proxy Error:", error);
+    console.error("Vercel Edge Function Error:", error);
+    
+    // Return a structured error response that the frontend can still render gracefully
     return new Response(JSON.stringify({ 
-      error: "Internal Server Error", 
+      error: "AI Service Error", 
       message: error.message,
-      girlfriendReply: "我現在心跳好快...連線快中斷了，可以再跟我說一次嗎？",
+      girlfriendReply: "（哎呀，我的訊號好像斷了...）",
       coachFeedback: {
         score: 0,
-        comment: "伺服器請求發生錯誤",
-        suggestion: "這可能是 API 額度用盡或網路瞬斷。請稍後再試。"
+        comment: `發生錯誤：${error.message}`,
+        suggestion: "這可能是 API 額度達到上限或伺服器繁忙，請稍等幾秒後重試。"
       }
     }), {
       status: 500,

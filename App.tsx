@@ -1,9 +1,10 @@
+
 import React, { useState } from 'react';
-import { ScenarioId, ScenarioData } from '@/types';
-import { SCENARIOS } from '@/constants';
-import ScenarioCard from '@/components/ScenarioCard';
-import CheatSheet from '@/components/CheatSheet';
-import ChatInterface from '@/components/ChatInterface';
+import { ScenarioId, ScenarioData } from './types';
+import { SCENARIOS } from './constants';
+import ScenarioCard from './components/ScenarioCard';
+import CheatSheet from './components/CheatSheet';
+import ChatInterface from './components/ChatInterface';
 
 type View = 'MENU' | 'LEARN' | 'PRACTICE';
 
@@ -38,7 +39,7 @@ function App() {
         {/* VIEW: MENU */}
         {currentView === 'MENU' && (
           <div className="flex flex-col h-full overflow-y-auto scrollbar-hide">
-            <header className="p-8 bg-white pb-6">
+            <header className="p-8 bg-white pb-6 sticky top-0 z-10">
               <h1 className="text-3xl font-bold text-gray-900 mb-1">
                 <span className="text-rose-500">Love</span> Language
               </h1>
@@ -46,19 +47,20 @@ function App() {
             </header>
             
             <div className="px-6 pb-6 grid grid-cols-1 gap-4">
-              <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 mb-2">
+              <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 mb-2 animate-fade-in-up">
                 <h3 className="font-bold text-blue-800 text-sm mb-1">👋 歡迎來到特訓班</h3>
                 <p className="text-blue-700 text-xs">
                   不知道怎麼說甜言蜜語？選擇一個情境，我會教你如何擺脫單調的回答，讓她感受到你滿滿的愛意。
                 </p>
               </div>
 
-              {Object.values(SCENARIOS).map((scenario) => (
-                <ScenarioCard 
-                  key={scenario.id} 
-                  scenario={scenario} 
-                  onClick={() => handleScenarioSelect(scenario.id)} 
-                />
+              {Object.values(SCENARIOS).map((scenario, idx) => (
+                <div key={scenario.id} className="animate-fade-in-up" style={{ animationDelay: `${idx * 0.1}s` }}>
+                  <ScenarioCard 
+                    scenario={scenario} 
+                    onClick={() => handleScenarioSelect(scenario.id)} 
+                  />
+                </div>
               ))}
             </div>
             
