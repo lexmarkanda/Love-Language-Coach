@@ -24,24 +24,32 @@ const RESPONSE_SCHEMA = {
 };
 
 /**
- * 智慧連線路由：
- * 1. 優先嘗試 Direct Call (適用於台灣等無限制地區)
- * 2. 失敗則自動切換至 Proxy (支援香港等受限地區)
+ * 格式化錯誤訊息，將 API 的 JSON 錯誤轉換為用戶看得懂的中文
  */
+const formatErrorMessage = (error: any): string => {
+  const msg = error?.message || String(error);
+  if (msg.includes("429") || msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED")) {
+    return "目前的練習人數較多（已達 API 限額），AI 導師正在喝口水休息。請稍等約 30-60 秒後再試一次，感謝你的耐心！";
+  }
+  if (msg.includes("500") || msg.includes("Internal Server Error")) {
+    return "伺服器似乎有點頭暈，暫時無法回應。請重新整理頁面試試看。";
+  }
+  return "連線稍微不穩定，請檢查網路環境或稍後再試。";
+};
+
 export const generateReplyAndFeedback = async (
   scenario: ScenarioData,
   history: { role: 'user' | 'model', content: string }[],
   userMessage: string
 ): Promise<AIResponseSchema> => {
-  // 取得環境變數中的 API Key
   const apiKey = process.env.API_KEY;
 
-  // --- 第一步：嘗試直連 Google ---
+  // --- 1. 嘗試直連 Google ---
   if (apiKey) {
     try {
       const ai = new GoogleGenAI({ apiKey });
       const systemInstruction = `
-        你是一位頂尖的感情經營大師。目前練習情境是「${scenario.title}」。
+        你是一位感情經營大師。目前練習情境是「${scenario.title}」。
         
         【行為準則】
         1. 女友身份：請表現得像個真實的人。如果用戶敷衍（如只回一個字、亂打字、123），請表現出不悅、困惑或撒嬌吐槽，不要生硬配合。
@@ -67,12 +75,23 @@ export const generateReplyAndFeedback = async (
       if (response.text) {
         return JSON.parse(response.text) as AIResponseSchema;
       }
-    } catch (directError) {
-      console.warn("直連 Google API 失敗，正在嘗試切換至伺服器代理...", directError);
+    } catch (directError: any) {
+      console.warn("Direct connection failed:", directError);
+      // 如果是 429 錯誤，且後端可能也一樣，可以直接在此攔截回傳
+      if (directError.message?.includes("429")) {
+        return {
+          girlfriendReply: "（親愛的，我這裡收訊有點卡住，可以稍等我一分鐘嗎？）",
+          coachFeedback: {
+            score: 0,
+            comment: formatErrorMessage(directError),
+            suggestion: "先深呼吸一下，思考一下更有溫度的回覆方式吧！"
+          }
+        };
+      }
     }
   }
 
-  // --- 第二步：伺服器代理備援 ---
+  // --- 2. 伺服器代理備援 ---
   try {
     const response = await fetch('/api/generate', {
       method: 'POST',
@@ -80,20 +99,21 @@ export const generateReplyAndFeedback = async (
       body: JSON.stringify({ scenario, history, userMessage }),
     });
 
+    const data = await response.json().catch(() => ({}));
+    
     if (!response.ok) {
-      const errorJson = await response.json().catch(() => ({}));
-      throw new Error(errorJson.message || `Proxy error: ${response.status}`);
+      throw new Error(data.message || data.error || `HTTP ${response.status}`);
     }
     
-    return await response.json() as AIResponseSchema;
+    return data as AIResponseSchema;
   } catch (proxyError: any) {
     console.error("連線全面失效:", proxyError);
     return {
-      girlfriendReply: "（親愛的，我這裡收訊突然變得很差...剛才你說什麼？可以再對我說一次嗎？）",
+      girlfriendReply: "（哎呀，我的網路好像斷斷續續的...你剛剛說什麼？可以再對我說一次嗎？）",
       coachFeedback: {
         score: 0,
-        comment: `連線異常：${proxyError.message || '無法接觸伺服器'}`,
-        suggestion: "這可能是因為地區網路限制或伺服器負載，請試著刷新頁面或稍候重試。"
+        comment: formatErrorMessage(proxyError),
+        suggestion: "這可能是因為網路限制或 API 流量管制。建議檢查連線，或稍等一會再試。"
       }
     };
   }

@@ -18,7 +18,7 @@ export default async function handler(req: Request) {
     if (!apiKey) {
       return new Response(JSON.stringify({ 
         error: "Configuration Error", 
-        message: "伺服器端缺少 API_KEY，請確認環境變數設定。" 
+        message: "伺服器環境設定不完整 (Missing API_KEY)。" 
       }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
 
@@ -77,14 +77,22 @@ export default async function handler(req: Request) {
 
   } catch (error: any) {
     console.error("Vercel Edge Function Error:", error);
+    
+    let friendlyMessage = error.message || "發生未知錯誤";
+    
+    // 判斷是否為額度錯誤
+    if (friendlyMessage.includes("429") || friendlyMessage.includes("quota") || friendlyMessage.includes("RESOURCE_EXHAUSTED")) {
+      friendlyMessage = "目前練習人數過多（已達 API 免費額度上限），請稍等約 30-60 秒後再次嘗試。";
+    }
+
     return new Response(JSON.stringify({ 
       error: "Proxy Failure", 
-      message: error.message || "發生未知錯誤",
-      girlfriendReply: "（通訊中斷中...）",
+      message: friendlyMessage,
+      girlfriendReply: "（收訊中斷中...）",
       coachFeedback: {
         score: 0,
-        comment: `伺服器處理失敗: ${error.message}`,
-        suggestion: "可能是 API 額度限制，請稍候重試。"
+        comment: friendlyMessage,
+        suggestion: "這通常是短時間內請求太頻繁導致的，休息一下再回來吧！"
       }
     }), {
       status: 500,
