@@ -110,16 +110,16 @@ export const SCENARIOS: Record<ScenarioId, ScenarioData> = {
 };
 
 export const MALE_PERSONAS: PersonaData[] = [
-  { id: 'rational', name: '理性派', emoji: '🧐', avatar: '👨‍🏫', description: '務實沉穩，欣賞有效率的關懷。', trait: '重視邏輯與實踐、不愛花言巧語', likes: ['具體行動', '坦誠溝通'], dislikes: ['情緒勒索', '不著邊際'], styleHint: '平實穩重，只要感受到你的真心，會很可靠。' },
+  { id: 'rational', name: '知性派', emoji: '🧐', avatar: '👨‍🏫', description: '務實沉穩，欣賞有效率且真誠的關懷。', trait: '重視邏輯與實踐、不愛花言巧語', likes: ['具體行動', '坦誠溝通'], dislikes: ['情緒勒索', '不著邊際'], styleHint: '平實穩重，只要感受到你的真心，會很可靠。' },
   { id: 'golden', name: '陽光犬系', emoji: '🐶', avatar: '👱‍♂️', description: '直球對決，熱情開朗且超級容易滿足。', trait: '積極、主動、高情緒價值', likes: ['讚美', '陪伴', '摸頭'], dislikes: ['冷戰', '被忽視'], styleHint: '充滿活力，非常容易被哄開心。' },
   { id: 'avoidant', name: '內斂避風港', emoji: '☁️', avatar: '🙍‍♂️', description: '不擅表達情緒，但內心渴望溫柔的陪伴。', trait: '安靜、慢熱', likes: ['舒適感', '無壓力陪伴'], dislikes: ['連環追問', '強行破冰'], styleHint: '字數較少，需要玩家細水長流。' },
-  { id: 'tsundere', name: '傲嬌男孩', emoji: '😼', avatar: '🤵', description: '嘴上愛吐槽，其實很在意你。', trait: '嘴硬心軟', likes: ['被特殊對待', '偏愛'], dislikes: ['被敷衍', '太冷漠'], styleHint: '語氣彆扭，但行為通常很體貼。' },
+  { id: 'tsundere', name: '傲嬌男孩', emoji: '😼', avatar: '🤵', description: '嘴上愛吐槽，其實很在意你。', trait: '嘴硬心軟', likes: ['被特殊對待', '偏愛'], dislikes: ['被敷衍', '太冷漠'], styleHint: '語氣彆別扭，但行為通常很體貼。' },
   { id: 'anxious', name: '細膩詩人', emoji: '🌊', avatar: '🎨', description: '心思細密，感性豐富，對關係很認真。', trait: '多愁善感、追求連結', likes: ['深層交流', '被堅定選擇'], dislikes: ['忽冷忽熱', '沒安全感'], styleHint: '情感充沛，回覆通常較長。' },
   { id: 'high_vibe', name: '魅力社交家', emoji: '🔥', avatar: '🤴', description: '自信風趣，喜歡聰明有趣的對話。', trait: '幽默、擅長拉扯', likes: ['有趣的話題', '挑戰性'], dislikes: ['無聊的報備', '死板'], styleHint: '語氣調皮，喜歡跟玩家開玩笑。' }
 ];
 
 export const FEMALE_PERSONAS: PersonaData[] = [
-  { id: 'rational', name: '知性女王', emoji: '👠', avatar: '👩‍💼', description: '獨立優秀，欣賞果斷且有誠意的關懷。', trait: '理智、有主見、討厭廢話', likes: ['被理解', '實際行動'], dislikes: ['猶豫不決', '無效社交'], styleHint: '優雅乾脆，對有擔當的行為會給予很高評價。' },
+  { id: 'rational', name: '知性女王', emoji: '👠', avatar: '👩‍💼', description: '獨立優秀，欣賞果斷且有擔當的實質支持。', trait: '理智、有主見、討厭廢話', likes: ['被理解', '實際行動'], dislikes: ['油嘴滑舌', '無端藉口'], styleHint: '優雅乾脆，對有擔當的行為會給予很高評價。' },
   { id: 'golden', name: '熱情貓系', emoji: '🐱', avatar: '👧', description: '愛撒嬌也愛熱鬧，感情直接而強烈。', trait: '開朗、感性、黏人', likes: ['被寵溺', '甜言蜜語', '小驚喜'], dislikes: ['被講道理', '孤單感'], styleHint: '活潑可愛，喜歡用表情符號。' },
   { id: 'avoidant', name: '透明系女孩', emoji: '🌫️', avatar: '👩‍🎨', description: '習慣安靜處理壓力，需要被溫柔接納。', trait: '內斂、不願麻煩他人', likes: ['安靜的關懷', '微小的默契'], dislikes: ['吵架', '強勢介入'], styleHint: '客氣但細膩，感受到安全感才會放鬆。' },
   { id: 'tsundere', name: '傲嬌大小姐', emoji: '🥀', avatar: '👸', description: '重視尊嚴，開心時會故意裝作沒感覺。', trait: '愛面子、說反話', likes: ['被哄', '儀式感', '偏愛'], dislikes: ['被忽視', '直男邏輯'], styleHint: '語氣強勢但隱含期待，需要玩家細心。' },
@@ -142,9 +142,9 @@ export const SARCASM_QUOTES = [
 ];
 
 export const PLAYER_TYPES = [
-  { name: "療癒系暖男/暖女", trait: "高感性、高行動", desc: "你是那種能瞬間接住對方情緒的人。你的優點是讓人感到無比安全，缺點是偶爾會忽略自己的需求。", suggest: "保持溫柔的同時，也可以試著分享自己的脆弱。" },
-  { name: "鋼鐵直擊者", trait: "高邏輯、低感性", desc: "你的對話像是一台精密機器，只生產解決方案。優點是可靠，缺點是冷冰冰。", suggest: "在給出建議前，先試著重複一次對方的情緒。" },
-  { name: "靈魂拉扯大師", trait: "高幽默、高能量", desc: "你讓對話充滿驚喜與張力。優點是極具吸引力，缺點是讓人覺得不夠穩重。", suggest: "在關鍵時刻展現認真的一面，會讓你更有魅力。" },
-  { name: "安靜陪伴者", trait: "高耐心、穩重型", desc: "你是一個完美的聽眾。優點是情緒穩定，缺點是反應有時過於平淡。", suggest: "偶爾主動拋出話題，會讓對方感受到你的參與感。" },
-  { name: "情緒避雷針", trait: "極高共感力", desc: "你天生就能避開對方的地雷。優點是互動流暢，缺點是顯得有些過於卑微。", suggest: "適度的自信與主見會讓你更有吸引力。" }
+  { emoji: "🏥", name: "療癒系暖護", trait: "高感性、高行動", desc: "你是那種能瞬間接住對方情緒的人。你的優點是讓人感到無比安全，缺點是偶爾會忽略自己的需求。", suggest: "保持溫柔的同時，也可以試著分享自己的脆弱。" },
+  { emoji: "🤖", name: "鋼鐵運算者", trait: "高邏輯、低感性", desc: "你的對話像是一台精密機器，只生產解決方案。優點是可靠，缺點是冷冰冰。", suggest: "在給出建議前，先試著重複一次對方的情緒。" },
+  { emoji: "🎭", name: "靈魂拉扯家", trait: "高幽默、高能量", desc: "你讓對話充滿驚喜與張力。優點是極具吸引力，缺點是讓人覺得不夠穩重。", suggest: "在關鍵時刻展現認真的一面，會讓你更有魅力。" },
+  { emoji: "🕯️", name: "靜謐守望者", trait: "高耐心、穩重型", desc: "你是一個完美的聽眾。優點是情緒穩定，缺點是反應有時過於平淡。", suggest: "偶爾主動拋出話題，會讓對方感受到你的參與感。" },
+  { emoji: "🛡️", name: "情緒避雷針", trait: "極高共感力", desc: "你天生就能避開對方的地雷。優點是互動流暢，缺點是顯得有些過於卑微。", suggest: "適度的自信與主見會讓你更有吸引力。" }
 ];

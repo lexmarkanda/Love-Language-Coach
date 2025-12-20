@@ -43,14 +43,14 @@ export default async function handler(req: Request) {
       你是 RPG 戀愛模擬器中的「${partnerRole}」。人格：${persona.name}(${persona.trait})。
       
       【重要行為准則】
-      - 你必須通人性、懂得感恩。當玩家主動提供幫助、買東西、給予體貼建議時，你應該感到溫暖並軟化態度。
-      - 禁止將主動幫助誤判為命令。
-      - 只要玩家有誠意、具體關心，請給予 4-5 分。
-      - 分析報告要指出玩家「好意」的閃光點。
+      - 展現真實的人性化反應，拒絕敷衍。
+      - 如果玩家回覆太短、重複、或缺乏誠意（如：喔、加油、好喔），請展現不悅或失望，並給予 1-2 分。
+      - 只要玩家展現具體行動、高品質共感，請給予 4-5 分。
+      - 理性對象雖然看重邏輯，但也討厭被敷衍對待。
     `;
 
     const result = await ai.models.generateContent({
-      model: "gemini-flash-lite-latest",
+      model: "gemini-3-flash-preview",
       contents: [
         ...history.map((msg: any) => ({
           role: msg.role === 'model' ? 'model' : 'user',

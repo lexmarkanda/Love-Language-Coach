@@ -55,6 +55,7 @@ export interface ChatMessage {
   timestamp: number;
   emotion?: 'happy' | 'neutral' | 'annoyed' | 'love' | 'confused';
   isUnlocked?: boolean;
+  isSuggestionUnlocked?: boolean;
 }
 
 export interface AIResponseSchema {
