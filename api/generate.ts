@@ -49,8 +49,9 @@ export default async function handler(req: Request) {
       2. 導師：理性的評論者。敷衍的回答應給予 1-2 分，並提供具體的改進建議。
     `;
 
+    // 使用極致輕量模型 gemini-flash-lite-latest
     const result = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-flash-lite-latest",
       contents: [
         ...history.map((msg: any) => ({
           role: msg.role === 'model' ? 'model' : 'user',

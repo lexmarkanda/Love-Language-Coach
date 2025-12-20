@@ -56,8 +56,9 @@ export const generateReplyAndFeedback = async (
         2. 導師身份：若用戶表現差，評分 1-2 分，並明確解釋為什麼這樣的溝通會讓對方感到心寒。
       `;
 
+      // 使用最節省資源的模型：gemini-flash-lite-latest
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-flash-lite-latest",
         contents: [
           ...history.map(msg => ({ 
             role: msg.role === 'model' ? 'model' : 'user', 
@@ -77,7 +78,6 @@ export const generateReplyAndFeedback = async (
       }
     } catch (directError: any) {
       console.warn("Direct connection failed:", directError);
-      // 如果是 429 錯誤，且後端可能也一樣，可以直接在此攔截回傳
       if (directError.message?.includes("429")) {
         return {
           girlfriendReply: "（親愛的，我這裡收訊有點卡住，可以稍等我一分鐘嗎？）",
